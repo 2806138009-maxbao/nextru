@@ -1,0 +1,21 @@
+[Unit]
+Description=Syncthing for the Obsidian vault and the off-site backup copies (sandboxed: cannot see the live Nexus database)
+After=network.target
+
+[Service]
+User=nexus
+Group=nexus
+ExecStart=/usr/bin/syncthing -no-browser -no-restart -home=/srv/obsidian/syncthing -gui-address=127.0.0.1:8384
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=3 4
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/obsidian/vault /srv/obsidian/syncthing /srv/nexus-offsite
+InaccessiblePaths=/srv/nexus /srv/nexus-bin /srv/obsidian/state
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

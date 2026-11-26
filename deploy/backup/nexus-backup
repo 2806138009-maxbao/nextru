@@ -1,0 +1,36 @@
+#!/bin/sh
+# Daily online backup of the primary Nexus DB; keeps the newest 14 (plus manifests).
+# Off-site: a zstd copy of each backup + its manifest goes to /srv/nexus-offsite (newest 7 kept),
+# which Syncthing shares send-only to the owner's PC.
+set -eu
+cd /srv/nexus/app
+export PYTHONPATH=/srv/nexus/app/src
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+B=/srv/nexus/backups/daily/main-$TS.sqlite
+/srv/nexus/venv/bin/python -X utf8 -m nexus.native --db /srv/nexus/data/main.sqlite backup "$B" >/dev/null
+grep -q "\"integrity_check\": \"ok\"" "$B.manifest.json"
+ls -1t /srv/nexus/backups/daily/main-*.sqlite | tail -n +15 | while read f; do rm -f "$f" "$f.manifest.json" "$f-wal" "$f-shm"; done
+
+OFF=/srv/nexus-offsite
+zstd -q -T0 -10 -o "$OFF/.main-$TS.tmp" "$B"
+cp "$B.manifest.json" "$OFF/main-$TS.sqlite.manifest.json"
+mv "$OFF/.main-$TS.tmp" "$OFF/main-$TS.sqlite.zst"
+ls -1t "$OFF"/main-*.sqlite.zst | tail -n +8 | while read f; do rm -f "$f" "${f%.zst}.manifest.json"; done
+
+# Stored file originals (nexus.files): content-addressed and write-once, so the copy is a mirror
+# that only ever grows. Nothing is deleted or overwritten, and every newly copied file is checked
+# against its name (= its SHA-256). It runs *after* the DB backup: a blob is written before its
+# files row, so the mirror already holds everything the DB backup above refers to.
+SRC=/srv/nexus/data/main.sqlite.files
+STORED=0
+if [ -d "$SRC" ]; then
+  for DST in /srv/nexus/backups/files "$OFF/files"; do
+    mkdir -p "$DST"
+    rsync -rt --ignore-existing --exclude='.*.tmp' --chmod=D750,F440 --out-format='%n' "$SRC/" "$DST/" \
+      | grep -v '/$' | while read f; do
+          echo "$(basename "$f")  $DST/$f" | sha256sum -c --quiet - || exit 1
+        done
+  done
+  STORED=$(find "$SRC" -type f ! -name '.*' | wc -l)
+fi
+echo "backup ok main-$TS.sqlite (+ off-site copy), stored originals: $STORED"

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nextru"
+version = "0.1.0"
+description = "A personal knowledge base for AI agents over MCP: documents, registers and files with sources, revisions and relations"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = []          # the core (SQLite store, search, HTTP API) is standard library only
+
+[project.optional-dependencies]
+mcp = ["mcp>=2.3"]                                   # MCP server (stdio / Streamable HTTP)
+files = ["pymupdf>=1.24", "pillow>=10.1"]            # PDF pages and image viewing (nexus.files)
+register = ["openpyxl>=3.1"]                         # Google Sheets register import (xlsx)
+semantic = ["sentence-transformers>=3", "numpy"]     # optional embedding channel (nexus.semantic_service)
+test = ["pytest>=8"]                                 # two test modules use pytest fixtures
+all = ["nextru[mcp,files,register]"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+nexus = ["schema.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

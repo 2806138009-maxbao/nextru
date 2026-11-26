@@ -1,0 +1,22 @@
+[Unit]
+Description=Nexus <-> Obsidian vault two-way sync (writes to Nexus as the owner)
+After=network.target nexus-main.service
+
+[Service]
+User=nexus
+Group=nexus
+WorkingDirectory=/srv/nexus/app
+Environment=PYTHONPATH=/srv/nexus/app/src
+ExecStart=/srv/nexus/venv/bin/python -X utf8 -m nexus.obsidian --db /srv/nexus/data/main.sqlite --scope research:realtest --vault /srv/obsidian/vault --state /srv/obsidian/state/state.json run
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/nexus/data /srv/obsidian/vault /srv/obsidian/state
+ReadOnlyPaths=/srv/nexus/app /srv/nexus/venv
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

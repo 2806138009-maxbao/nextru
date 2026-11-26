@@ -1,0 +1,28 @@
+# local data: databases, stored file originals, archives, test output
+var/
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite.files/
+*.calls.jsonl
+*.writes.jsonl
+reports/
+experiments/file_probe/evidence/received/
+experiments/file_probe/evidence/calls.jsonl
+
+# credentials (Drive OAuth): never commit
+client_secret*.json
+token.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+build/
+dist/
