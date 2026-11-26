@@ -107,15 +107,24 @@ class _Catalog:
         return (tuple(a), b[0], tuple(c))
 
 
-_CACHE: dict[tuple[int, str], _Catalog] = {}
+# (id(conn), scope) -> (conn, catalog). The connection itself is kept in the entry: id() values
+# are reused once an object is freed, so a new connection to a *different* database could
+# otherwise get an old catalog whose shape key happens to match (seen as a flaky test on Linux).
+# Holding the reference keeps the id taken; the cap keeps closed connections from piling up.
+_CACHE: dict[tuple[int, str], tuple[sqlite3.Connection, _Catalog]] = {}
+_CACHE_MAX = 16
 
 
 def _catalog(conn: sqlite3.Connection, scope: str) -> _Catalog:
     k = (id(conn), scope)
-    cat = _CACHE.get(k)
-    if cat is None or cat.key != _Catalog._key(conn, scope):
-        cat = _Catalog(conn, scope)
-        _CACHE[k] = cat
+    hit = _CACHE.get(k)
+    if hit is not None and hit[0] is conn and hit[1].key == _Catalog._key(conn, scope):
+        return hit[1]
+    cat = _Catalog(conn, scope)
+    _CACHE.pop(k, None)
+    while len(_CACHE) >= _CACHE_MAX:
+        _CACHE.pop(next(iter(_CACHE)))
+    _CACHE[k] = (conn, cat)
     return cat
 
 

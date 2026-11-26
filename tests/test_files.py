@@ -228,6 +228,18 @@ class FileMcpTest(unittest.TestCase):
             out = json.loads(self.content(server, "nexus_file_put", {"file": ref})[0].text)
             self.assertEqual(out["status"], status, ref)
 
+    def test_put_reports_http_errors_instead_of_crashing(self):
+        """An expired attachment link (HTTP 403/404) must come back as DOWNLOAD_FAILED (found live)."""
+        import urllib.error
+        from unittest import mock
+        server = self.server()
+        err = urllib.error.HTTPError("https://example.com/x", 403, "Forbidden", {}, None)
+        with mock.patch("urllib.request.OpenerDirector.open", side_effect=err),              mock.patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))]):
+            out = json.loads(self.content(server, "nexus_file_put", {
+                "file": {"download_url": "https://example.com/x?sig=s", "file_id": "f"}})[0].text)
+        self.assertEqual(out["status"], "DOWNLOAD_FAILED")
+        self.assertIn("403", out["error"])
+
     def test_view_refuses_other_scopes(self):
         conn = connect(self.db_path)
         out = FileStore(Store(conn), self.db_path + ".files").put(make_png(), "x.png", "research:other",

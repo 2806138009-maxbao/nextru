@@ -307,6 +307,7 @@ def fetch_url(url: str, max_bytes: int = MAX_UPLOAD_BYTES) -> bytes:
     own network on an agent's say-so (SSRF). Redirects are re-checked the same way."""
     import ipaddress
     import socket
+    import urllib.error
     import urllib.parse
     import urllib.request
 
@@ -326,8 +327,14 @@ def fetch_url(url: str, max_bytes: int = MAX_UPLOAD_BYTES) -> bytes:
 
     check(url)
     opener = urllib.request.build_opener(Checked)
-    with opener.open(urllib.request.Request(url, headers={"User-Agent": "nexus-files/1"}), timeout=60) as r:
-        data = r.read(max_bytes + 1)
+    try:
+        with opener.open(urllib.request.Request(url, headers={"User-Agent": "nexus-files/1"}), timeout=60) as r:
+            data = r.read(max_bytes + 1)
+    except urllib.error.HTTPError as e:     # e.g. 403 on an expired chat attachment link
+        raise FileError("DOWNLOAD_FAILED", f"download_url answered HTTP {e.code}; the link may have "
+                        "expired: attach the file again") from None
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise FileError("DOWNLOAD_FAILED", f"could not download the file: {type(e).__name__}") from None
     if len(data) > max_bytes:
         raise FileError("TOO_LARGE", f"file is larger than {max_bytes // (1024 * 1024)} MB")
     return data
