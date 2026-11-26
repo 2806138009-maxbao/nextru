@@ -24,8 +24,10 @@ provide when you run it.
 - **File downloads.** `nexus_file_put` fetches only `https` URLs whose host resolves to public
   addresses (redirects re-checked), up to 50 MB. It never fetches from the server's own network.
 - **Every call is timed and logged** to `<db>.calls.jsonl` (tool, actor, argument shape, size,
-  status), and writes also to `<db>.writes.jsonl`. These logs contain argument summaries; treat
-  them as personal data.
+  status), and writes also to `<db>.writes.jsonl`. Strings are cut to 60 characters, URLs are
+  reduced to scheme and host (a signed attachment link and its token are never logged), and
+  objects are logged by type only. The logs still contain short argument summaries such as
+  search terms and file names, so treat them as personal data.
 
 Triggers stop accidents and misbehaving agents, not someone with shell access to the database
 file. Tamper evidence comes from hashes: `python -m nexus.files ... verify` and

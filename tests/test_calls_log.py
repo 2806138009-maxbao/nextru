@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import unittest
 
 from helpers import NexusTest
 
@@ -58,3 +59,30 @@ class CallsLog(NexusTest):
         eps = calls.episodes(fake, 180)
         self.assertEqual([len(e) for e in eps], [2, 1])
         self.assertIn("longest pause 40s", calls.report(fake, 180))
+
+
+class SignedUrlTest(unittest.TestCase):
+    """A chat attachment's signed download link must never reach the call log (found in real use)."""
+
+    def test_attachment_url_and_token_are_not_logged(self):
+        from nexus.calls import summarize_args
+        from nexus.mcp_server import FileRef
+        url = ("https://files.example.blob.core.windows.net/files/0000-1111/raw?se=2026-11-26T20%3A25"
+               "&sp=r&sig=SECRETSIGNATURE123")
+        out = summarize_args({"file": FileRef(download_url=url, file_id="file_abc", name="photo.jpg"),
+                              "name": "", "note": url})
+        text = json.dumps(out)
+        self.assertNotIn("SECRETSIGNATURE123", text)
+        self.assertNotIn("se=2026", text)
+        self.assertNotIn("0000-1111", text)
+        self.assertEqual(out["file"]["download_url"], "https://files.example.blob.core.windows.net/…")
+        self.assertEqual(out["file"]["name"], "photo.jpg")
+        self.assertEqual(out["note"], "https://files.example.blob.core.windows.net/…")
+
+    def test_unknown_objects_are_named_not_dumped(self):
+        from nexus.calls import summarize_args
+
+        class Secretive:
+            def __repr__(self):
+                return "token=abc"
+        self.assertEqual(summarize_args({"x": Secretive()}), {"x": "<Secretive>"})

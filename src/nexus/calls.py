@@ -3,7 +3,8 @@
 Server time is what Nexus itself spends; the gaps between calls are the agent (thinking, writing,
 deciding what to call next). Logged per call: tool, actor, start, lock wait, run time, response size,
 status, and a short argument summary (strings cut to 60 characters; document bodies, ops and
-evidence counted, not copied). Logging never breaks a tool call.
+evidence counted, not copied; URLs reduced to scheme and host, so a signed download link and its
+token never reach the log). Logging never breaks a tool call.
 
     python -m nexus.calls --db main.sqlite [--since 2026-11-10T17:00] [--gap 180]
 
@@ -18,6 +19,7 @@ import datetime as _dt
 import json
 import os
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -28,9 +30,26 @@ def log_path(db_path: str | Path) -> Path:
     return Path(str(db_path) + ".calls.jsonl")
 
 
+def _url_safe(value: str) -> str:
+    """'https://host/path?sig=...' -> 'https://host/…'. Paths and queries can carry tokens."""
+    if not value.startswith(("http://", "https://")):
+        return value
+    u = urllib.parse.urlsplit(value)
+    return f"{u.scheme}://{u.hostname or ''}" + ("/…" if (u.path not in ("", "/") or u.query) else "")
+
+
+def _short(value: str) -> str:
+    value = _url_safe(value)
+    return value if len(value) <= 60 else value[:60] + "…"
+
+
 def summarize_args(kwargs: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in kwargs.items():
+        if hasattr(v, "model_dump"):            # pydantic argument (e.g. a chat attachment)
+            v = v.model_dump(exclude_none=True)
+            out[k] = {kk: _short(vv) if isinstance(vv, str) else type(vv).__name__ for kk, vv in v.items()}
+            continue
         if v is None or v == "" or v == []:
             continue
         if k in BULKY or isinstance(v, (list, dict)):
@@ -38,9 +57,11 @@ def summarize_args(kwargs: dict[str, Any]) -> dict[str, Any]:
             if k == "children":
                 out["chars"] = len(json.dumps(v, ensure_ascii=False))
         elif isinstance(v, str):
-            out[k] = v if len(v) <= 60 else v[:60] + "…"
-        else:
+            out[k] = _short(v)
+        elif isinstance(v, (int, float, bool)):
             out[k] = v
+        else:                                   # never log an object's repr: it can hold anything
+            out[k] = f"<{type(v).__name__}>"
     return out
 
 

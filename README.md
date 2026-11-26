@@ -195,14 +195,16 @@ Verified, with tests or recorded runs:
   and Linux (Python 3.12), including a fresh-virtualenv install from PyPI.
 - Files: PDF pages searchable by page, page and image rendering, write-once storage,
   hash verification and tamper detection, one file with many sources.
+- **ChatGPT, end to end:** a file attached in a ChatGPT chat is stored through `nexus_file_put`
+  (ChatGPT passes the attachment, Nextru downloads, hashes and keeps it), and ChatGPT's model reads
+  the image `nexus_file_view` returns (2026-11-26).
 - In daily use on a small VPS behind the loopback-only HTTP transport, with ChatGPT, Claude
   and Grok as clients.
 
 Not verified yet:
 
-- How every MCP client handles `nexus_file_put` attachments and `nexus_file_view` images (it
-  differs between clients). ChatGPT has stored an attachment through `nexus_file_put` in real
-  use; whether its model sees the image `nexus_file_view` returns is not confirmed yet.
+- File tools in clients other than ChatGPT (Claude, Grok, local models): how they pass
+  attachments and whether they show returned images differs per client.
 - Retrieval quality has no public benchmark yet. In the author's own tests, agents sometimes
   missed a precedent that was stored in another course or project.
 - Link suggestions for very short titles (course topic labels) are weak: the right candidate
