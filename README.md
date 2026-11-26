@@ -1,33 +1,90 @@
 # Nextru
 
-A personal knowledge base for AI agents, served over [MCP](https://modelcontextprotocol.io).
+**One knowledge ledger for all your AIs. They write it, you approve it, and every line cites its
+source.**
 
-Nextru keeps what you know: documents, course or project registers, notes and files of any type.
-Every piece keeps where it came from, which version it is and how it relates to the rest. Agents
-such as ChatGPT, Claude or a local model then search and read it, and, if you allow it, write
-back, with every change undoable.
+Nextru is a personal knowledge store served over [MCP](https://modelcontextprotocol.io). ChatGPT,
+Claude, Grok or a local model read from it and write to it. You stay the owner: you see who wrote
+what, confirm or reject what an agent proposed, and undo any change.
 
-- **Sources, not summaries.** Every paragraph has a stable anchor (`h2.3-a1b2c3d4`) and points to
-  the exact source revision. Answers can cite what a document said at that revision.
-- **Files of any type.** Originals are stored as is, under their SHA-256, written once. PDF pages
-  and text files become searchable page by page. A PDF page or an image can be handed to a
-  vision model with `nexus_file_view`.
-- **Relations.** Documents, files, people, courses and topics are objects, and typed relations
-  connect them. Relations an agent adds stay `UNVERIFIED`, with cited evidence, until you accept them.
-- **Undoable writes.** Native documents keep every revision. Agents edit by compare-and-swap on
-  the revision they read; restore and archive undo any change.
-- **Small core.** SQLite plus the Python standard library. MCP, PDF/image handling, Sheets import
-  and embeddings are optional extras.
+## Why
+
+If you use several AIs for real work (courses, projects, writing, research), each of them forgets
+you, or remembers you in its own way:
+
+- **Built-in assistant memory** is a summary the assistant wrote about you. You can't see all of
+  it, can't cite it, and can't take it to another assistant.
+- **Memory layers** have an LLM extract "facts" on every write. Extraction is lossy and can be
+  wrong, and the original wording is gone when you need to check it.
+- **RAG over your documents** finds similar passages, but can't say which version of which
+  document they came from, or whether they still hold.
+- **Note apps** are great for you, but an agent can only read files there. It can't safely
+  write back.
+
+## What Nextru does instead
+
+- **Keeps the source, not a summary.** Every paragraph keeps a stable anchor (`h2.3-a1b2c3d4`) and
+  the exact source revision, labelled `VERIFIED`, `UNVERIFIED`, `DRAFT` or `INFERENCE`.
+  An answer can quote what a document said at revision 12, and say who claimed it.
+- **Lets many agents write, safely.**
+  - The server fixes each writer's identity (`agent:chatgpt`, `agent:claude`, ...), so an agent
+    can't pose as another.
+  - Edits are compare-and-swap on the revision the agent read, and every revision is kept.
+  - A relation or new object from an agent is `UNVERIFIED`, cites evidence, and waits for you.
+- **Holds documents, structured registers and files together.** PDFs are searchable and citable
+  page by page. A page or an image can be handed to a vision model. Originals are stored once,
+  under their SHA-256.
+- **Keeps the LLM out of the write path.** Storing something costs no model calls: it's
+  deterministic, works offline, and produces the same result every time.
+- **Is yours to keep.** One SQLite file plus a folder of originals, with online backups, a
+  restore drill and tamper evidence. Standard library only at the core.
+
+## In daily use
+
+The author's own instance, over 17 days (counts only):
+
+| | |
+|---|---|
+| Clients writing to one store | 4: ChatGPT, Grok, DeepSeek, Claude |
+| Tool calls | ~4,100 (reads 1,450, searches 1,020, relations 580, document writes 570) |
+| Document revisions written by agents / by the owner | 617 / 13 |
+| Relations | 2,886, of which 2,593 confirmed by the owner |
+| Ingested | ~900 Drive documents → 104,000 anchored paragraphs, plus course registers and files |
+
+The pattern behind these numbers is what Nextru is built for: **the agents do the writing, the
+person does the approving.**
+
+## How it differs
+
+| | Nextru | Memory layers (e.g. Mem0) | Temporal graphs (e.g. Graphiti) | Markdown memory (e.g. Basic Memory) |
+|---|---|---|---|---|
+| What is stored | original text + anchors + revisions | LLM-extracted facts | LLM-extracted entities/edges over episodes | your Markdown notes |
+| LLM call per write | no | yes | yes | no |
+| Many agents, one owner | built in: fixed identities, proposals, CAS, undo | per user/agent memories | shared graph | shared files |
+| "What did it say at version N?" | yes | no | episodes, not document versions | via git, if you use it |
+| Files (PDF pages, images) | yes, page-level | no | no | files as notes |
+
+Each of those projects does things Nextru doesn't (managed hosting, temporal fact invalidation,
+a polished note-taking flow). Pick by what you need to trust.
+
+## What it is not
+
+- **Not a note app.** There's no editor for humans. Use Obsidian for that; Nextru syncs with a
+  vault both ways.
+- **Not a team wiki.** It's one person and their agents: no multi-user permissions.
+- **Not "AI organizes everything for you".** It's deliberately conservative: agents propose, you
+  decide.
 
 > Status: early (0.1). It runs one person's daily knowledge base, but the interfaces may still
-> change. See [What is verified](#what-is-verified).
+> change. The Python package and the tools are still called `nexus` / `nexus_*` (the project's
+> working name). See [What is verified](#what-is-verified).
 
 ## Quick start
 
 Python 3.11+ with SQLite 3.34+ (for the FTS5 trigram tokenizer; check with `python -c "import sqlite3; print(sqlite3.sqlite_version)"`). Tested on SQLite 3.37 and 3.5x.
 
 ```sh
-git clone https://github.com/<owner>/nextru && cd nextru
+git clone https://github.com/2806138009-maxbao/nextru && cd nextru
 python -m venv .venv
 . .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -e ".[all]"           # MCP server + PDF/image files + Sheets import
@@ -126,6 +183,10 @@ authenticates: an SSH tunnel, an OAuth proxy, Tailscale, or a provider tunnel su
 Secure MCP Tunnel. [`deploy/`](deploy/) has hardened systemd units (dedicated user,
 `ProtectSystem=strict`, minimal writable paths). See [SECURITY.md](SECURITY.md).
 
+Web clients (ChatGPT connectors, Claude on the web) need a public HTTPS endpoint with OAuth.
+Nextru doesn't ship that piece yet: today you put your own authenticating proxy or tunnel in
+front. Built-in remote auth is the next planned piece.
+
 ## What is verified
 
 Verified, with tests or recorded runs:
@@ -140,7 +201,10 @@ Verified, with tests or recorded runs:
 Not verified yet:
 
 - How every MCP client handles `nexus_file_put` attachments and `nexus_file_view` images (it
-  differs between clients; ChatGPT has not been tested end to end).
+  differs between clients). ChatGPT has stored an attachment through `nexus_file_put` in real
+  use; whether its model sees the image `nexus_file_view` returns is not confirmed yet.
+- Retrieval quality has no public benchmark yet. In the author's own tests, agents sometimes
+  missed a precedent that was stored in another course or project.
 - Link suggestions for very short titles (course topic labels) are weak: the right candidate
   ranks first but often stays below the display threshold.
 - Images have no searchable text beyond their name.
