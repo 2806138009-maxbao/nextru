@@ -12,6 +12,14 @@ license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = []          # the core (SQLite store, search, HTTP API) is standard library only
 
+[project.urls]
+Homepage = "https://github.com/2806138009-maxbao/nextru"
+Repository = "https://github.com/2806138009-maxbao/nextru"
+Issues = "https://github.com/2806138009-maxbao/nextru/issues"
+
+[project.scripts]
+nextru = "nexus.mcp_server:main"                     # same as python -m nexus.mcp_server
+
 [project.optional-dependencies]
 mcp = ["mcp>=2.3"]                                   # MCP server (stdio / Streamable HTTP)
 files = ["pymupdf>=1.24", "pillow>=10.1"]            # PDF pages and image viewing (nexus.files)

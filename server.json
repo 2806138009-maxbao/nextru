@@ -1,0 +1,55 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.2806138009-maxbao/nextru",
+  "title": "Nextru",
+  "description": "Personal knowledge ledger for AI agents: documents, registers and files with sources and revisions",
+  "repository": {
+    "url": "https://github.com/2806138009-maxbao/nextru",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "nextru",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "mcp>=2.3",
+          "description": "The MCP SDK is an optional extra of nextru; the server needs it"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--db",
+          "description": "Path to the SQLite knowledge base (created if missing)",
+          "isRequired": true,
+          "format": "filepath",
+          "valueHint": "kb.sqlite"
+        },
+        {
+          "type": "named",
+          "name": "--scope",
+          "description": "The single scope this server reads and writes, fixed at start",
+          "isRequired": true,
+          "valueHint": "personal:me"
+        },
+        {
+          "type": "named",
+          "name": "--agent-name",
+          "description": "Enable undoable write tools, recorded as agent:<name>; omit for a read-only server",
+          "isRequired": false,
+          "valueHint": "claude"
+        }
+      ]
+    }
+  ]
+}

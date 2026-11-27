@@ -1,5 +1,9 @@
 # Nextru
 
+[![Nextru MCP server](https://glama.ai/mcp/servers/2806138009-maxbao/nextru/badges/score.svg)](https://glama.ai/mcp/servers/2806138009-maxbao/nextru)
+
+<!-- mcp-name: io.github.2806138009-maxbao/nextru -->
+
 **One knowledge ledger for all your AIs. They write it, you approve it, and every line cites its
 source.**
 
